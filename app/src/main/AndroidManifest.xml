@@ -1,24 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="com.gpaytracker">
 
-    <!-- Required to post confirmation notifications -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <!-- Required to bind the notification listener -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"
+        tools:ignore="ProtectedPermissions"/>
     <uses-permission android:name="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
-        tools:ignore="ProtectedPermissions"
-        xmlns:tools="http://schemas.android.com/tools"/>
+        tools:ignore="ProtectedPermissions"/>
 
     <application
         android:name=".GPayTrackerApp"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
-        android:label="GPay Tracker"
+        android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.GPayTracker">
 
-        <!-- Main activity -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -29,11 +29,7 @@
             </intent-filter>
         </activity>
 
-        <!--
-            Notification Listener Service.
-            The user MUST grant access in:
-            Settings → Apps → Special App Access → Notification Access → GPay Tracker
-        -->
+        <!-- Notification listener for GPay + banking apps -->
         <service
             android:name=".service.GPayListenerService"
             android:label="GPay Tracker"
@@ -43,6 +39,16 @@
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
         </service>
+
+        <!-- Weekly summary alarm receiver -->
+        <receiver
+            android:name=".service.WeeklySummaryReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.gpaytracker.WEEKLY_SUMMARY" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
 
     </application>
 </manifest>

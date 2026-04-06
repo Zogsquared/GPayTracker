@@ -10,9 +10,11 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import com.gpaytracker.service.WeeklySummaryReceiver
 import com.gpaytracker.ui.MainScreen
-import com.gpaytracker.ui.theme.GPayTrackerTheme
 import com.gpaytracker.viewmodel.ExpenseViewModel
 
 class MainActivity : ComponentActivity() {
@@ -24,18 +26,18 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Request notification listener permission if not granted
         if (!isNotificationServiceEnabled()) {
             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
         }
 
+        WeeklySummaryReceiver.schedule(this)
+
+        val startTab = intent.getStringExtra("open_tab") ?: "dashboard"
+
         setContent {
-            GPayTrackerTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    MainScreen(viewModel = viewModel)
+            MaterialTheme(colorScheme = darkColorScheme(background = Color(0xFF0D0D1A))) {
+                Surface(modifier = Modifier.fillMaxSize(), color = Color(0xFF0D0D1A)) {
+                    MainScreen(viewModel = viewModel, startTab = startTab)
                 }
             }
         }
@@ -43,12 +45,7 @@ class MainActivity : ComponentActivity() {
 
     private fun isNotificationServiceEnabled(): Boolean {
         val flat = Settings.Secure.getString(contentResolver, "enabled_notification_listeners")
-        if (!TextUtils.isEmpty(flat)) {
-            val names = flat.split(":").toTypedArray()
-            for (name in names) {
-                if (name.contains(packageName)) return true
-            }
-        }
-        return false
+            ?: return false
+        return flat.split(":").any { it.contains(packageName) }
     }
 }

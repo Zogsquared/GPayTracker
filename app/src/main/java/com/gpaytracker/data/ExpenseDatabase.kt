@@ -1,13 +1,13 @@
 package com.gpaytracker.data
 
 import android.content.Context
-import androidx.room.Database
-import androidx.room.Room
-import androidx.room.RoomDatabase
-import androidx.room.TypeConverter
-import androidx.room.TypeConverters
+import androidx.room.*
 
-@Database(entities = [Expense::class], version = 1, exportSchema = false)
+@Database(
+    entities = [Expense::class, Income::class, WeeklySummary::class],
+    version = 2,
+    exportSchema = false
+)
 @TypeConverters(Converters::class)
 abstract class ExpenseDatabase : RoomDatabase() {
     abstract fun expenseDao(): ExpenseDao
@@ -21,7 +21,9 @@ abstract class ExpenseDatabase : RoomDatabase() {
                     context.applicationContext,
                     ExpenseDatabase::class.java,
                     "expense_database"
-                ).build()
+                )
+                .fallbackToDestructiveMigration()
+                .build()
                 INSTANCE = instance
                 instance
             }
@@ -30,9 +32,6 @@ abstract class ExpenseDatabase : RoomDatabase() {
 }
 
 class Converters {
-    @TypeConverter
-    fun fromCategory(value: ExpenseCategory): String = value.name
-
-    @TypeConverter
-    fun toCategory(value: String): ExpenseCategory = ExpenseCategory.valueOf(value)
+    @TypeConverter fun fromCategory(v: ExpenseCategory): String = v.name
+    @TypeConverter fun toCategory(v: String): ExpenseCategory = ExpenseCategory.valueOf(v)
 }

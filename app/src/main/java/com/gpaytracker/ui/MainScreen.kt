@@ -1,6 +1,5 @@
 package com.gpaytracker.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -10,25 +9,30 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import com.gpaytracker.ui.screens.AnalyticsScreen
-import com.gpaytracker.ui.screens.DashboardScreen
-import com.gpaytracker.ui.screens.SettingsScreen
-import com.gpaytracker.ui.screens.TransactionsScreen
+import com.gpaytracker.ui.screens.*
 import com.gpaytracker.viewmodel.ExpenseViewModel
 
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
     object Dashboard    : Screen("dashboard",    "Home",     Icons.Filled.Home)
     object Transactions : Screen("transactions", "Txns",     Icons.Filled.List)
     object Analytics    : Screen("analytics",    "Stats",    Icons.Filled.BarChart)
+    object Summaries    : Screen("summaries",    "History",  Icons.Filled.History)
     object Settings     : Screen("settings",     "Settings", Icons.Filled.Settings)
 }
 
-val screens = listOf(Screen.Dashboard, Screen.Transactions, Screen.Analytics, Screen.Settings)
+val screens = listOf(
+    Screen.Dashboard, Screen.Transactions,
+    Screen.Analytics, Screen.Summaries, Screen.Settings
+)
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen(viewModel: ExpenseViewModel) {
-    var currentScreen by remember { mutableStateOf<Screen>(Screen.Dashboard) }
+fun MainScreen(viewModel: ExpenseViewModel, startTab: String = "dashboard") {
+    var currentScreen by remember { mutableStateOf<Screen>(
+        when (startTab) {
+            "summaries" -> Screen.Summaries
+            else -> Screen.Dashboard
+        }
+    ) }
 
     Scaffold(
         bottomBar = {
@@ -60,6 +64,7 @@ fun MainScreen(viewModel: ExpenseViewModel) {
                 Screen.Dashboard    -> DashboardScreen(viewModel)
                 Screen.Transactions -> TransactionsScreen(viewModel)
                 Screen.Analytics    -> AnalyticsScreen(viewModel)
+                Screen.Summaries    -> SummariesScreen(viewModel)
                 Screen.Settings     -> SettingsScreen(viewModel)
             }
         }
