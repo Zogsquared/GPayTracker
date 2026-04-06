@@ -1,9 +1,6 @@
 package com.gpaytracker
 
-import android.content.Intent
 import android.os.Bundle
-import android.provider.Settings
-import android.text.TextUtils
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -25,15 +22,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        if (!isNotificationServiceEnabled()) {
-            startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
-        }
-
         WeeklySummaryReceiver.schedule(this)
-
         val startTab = intent.getStringExtra("open_tab") ?: "dashboard"
-
         setContent {
             MaterialTheme(colorScheme = darkColorScheme(background = Color(0xFF0D0D1A))) {
                 Surface(modifier = Modifier.fillMaxSize(), color = Color(0xFF0D0D1A)) {
@@ -41,11 +31,5 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-    }
-
-    private fun isNotificationServiceEnabled(): Boolean {
-        val flat = Settings.Secure.getString(contentResolver, "enabled_notification_listeners")
-            ?: return false
-        return flat.split(":").any { it.contains(packageName) }
     }
 }
