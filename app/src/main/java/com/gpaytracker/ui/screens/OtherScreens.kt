@@ -95,7 +95,7 @@ fun TransactionsScreen(viewModel: ExpenseViewModel) {
 @Composable
 fun AnalyticsScreen(viewModel: ExpenseViewModel) {
     val categoryTotals by viewModel.categoryTotals.collectAsState()
-    val weeklyTotal by viewModel.weeklyTotal.collectAsState()
+    val weeklyTotal by viewModel.weeklyExpenseTotal.collectAsState()
 
     LazyColumn(
         Modifier
@@ -128,7 +128,7 @@ fun AnalyticsScreen(viewModel: ExpenseViewModel) {
                         Text("No data yet.", color = Color(0x66FFFFFF), fontSize = 13.sp)
                     } else {
                         categoryTotals.sortedByDescending { it.total }.forEach { ct ->
-                            val pct = if (weeklyTotal > 0) ((ct.total / weeklyTotal) * 100).toInt() else 0
+                            val pct = if (weeklyTotal > 0.0) ((ct.total / weeklyTotal.toDouble()) * 100).toInt() else 0
                             val color = Color(viewModel.categoryColor(ct.category))
 
                             Column(Modifier.padding(vertical = 6.dp)) {
