@@ -1,77 +1,91 @@
 package com.gpaytracker.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.unit.dp
+import com.gpaytracker.theme.*
 import com.gpaytracker.ui.screens.*
 import com.gpaytracker.viewmodel.ExpenseViewModel
-
-sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
-    object Dashboard    : Screen("dashboard",    "Home",     Icons.Filled.Home)
-    object Transactions : Screen("transactions", "Txns",     Icons.Filled.List)
-    object Analytics    : Screen("analytics",    "Stats",    Icons.Filled.BarChart)
-    object Summaries    : Screen("summaries",    "History",  Icons.Filled.History)
-    object Settings     : Screen("settings",     "Settings", Icons.Filled.Settings)
-}
-
-val screens = listOf(
-    Screen.Dashboard, Screen.Transactions,
-    Screen.Analytics, Screen.Summaries, Screen.Settings
-)
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun MainScreen(viewModel: ExpenseViewModel, startTab: String = "dashboard") {
-    // Wrap everything in the permission gate — main UI only shows once access granted
     PermissionGateScreen {
-        var currentScreen by remember {
-            mutableStateOf<Screen>(
-                when (startTab) {
-                    "summaries" -> Screen.Summaries
-                    else -> Screen.Dashboard
-                }
-            )
+        val scope = rememberCoroutineScope()
+
+        // Which alien/tab is currently dialled in (not yet activated)
+        var dialIndex by remember {
+            mutableStateOf(ALIENS.indexOfFirst { it.tab == startTab }.coerceAtLeast(0))
+        }
+        // Which alien/tab content is actually showing
+        var activeIndex by remember {
+            mutableStateOf(ALIENS.indexOfFirst { it.tab == startTab }.coerceAtLeast(0))
         }
 
-        Scaffold(
-            bottomBar = {
-                NavigationBar(
-                    containerColor = Color(0xFF0D0D1A),
-                    tonalElevation = 0.dp
-                ) {
-                    screens.forEach { screen ->
-                        NavigationBarItem(
-                            selected = currentScreen == screen,
-                            onClick = { currentScreen = screen },
-                            icon = { Icon(screen.icon, contentDescription = screen.label) },
-                            label = { Text(screen.label) },
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor   = Color(0xFFFF6B35),
-                                selectedTextColor   = Color(0xFFFF6B35),
-                                unselectedIconColor = Color(0x66FFFFFF),
-                                unselectedTextColor = Color(0x66FFFFFF),
-                                indicatorColor      = Color(0x22FF6B35)
-                            )
-                        )
+        var transformState by remember { mutableStateOf(TransformState.IDLE) }
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFF0A0A0A))
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                // ── Content area ──────────────────────────────────────────────
+                Box(modifier = Modifier.weight(1f)) {
+                    when (ALIENS[activeIndex].tab) {
+                        "dashboard"    -> DashboardScreen(viewModel)
+                        "transactions" -> TransactionsScreen(viewModel)
+                        "analytics"    -> AnalyticsScreen(viewModel)
+                        "summaries"    -> SummariesScreen(viewModel)
+                        "settings"     -> SettingsScreen(viewModel)
                     }
                 }
-            },
-            containerColor = Color(0xFF0D0D1A)
-        ) { innerPadding ->
-            Box(modifier = Modifier.padding(innerPadding)) {
-                when (currentScreen) {
-                    Screen.Dashboard    -> DashboardScreen(viewModel)
-                    Screen.Transactions -> TransactionsScreen(viewModel)
-                    Screen.Analytics    -> AnalyticsScreen(viewModel)
-                    Screen.Summaries    -> SummariesScreen(viewModel)
-                    Screen.Settings     -> SettingsScreen(viewModel)
-                }
+
+                // ── Omnitrix dial navigator (replaces bottom nav) ─────────────
+                OmnitrixNavigator(
+                    selectedIndex = dialIndex,
+                    onIndexChange = { newIndex ->
+                        dialIndex = newIndex
+                        // Dialling without activating just previews the alien
+                    },
+                    onActivate = {
+                        if (transformState == TransformState.IDLE && dialIndex != activeIndex) {
+                            // Full transformation sequence
+                            scope.launch {
+                                transformState = TransformState.FLASHING
+                                OmnitrixSoundPlayer.playTransformation {
+                                    // no-op — we drive state ourselves below
+                                }
+                                delay(300)
+                                transformState = TransformState.SHOWING_ALIEN
+                                // onDone fires after 900ms in the overlay
+                            }
+                        } else if (transformState == TransformState.IDLE && dialIndex == activeIndex) {
+                            // Already on this tab — just play a click
+                            OmnitrixSoundPlayer.playDialClick()
+                        }
+                    }
+                )
             }
+
+            // ── Transformation flash overlay (on top of everything) ───────────
+            TransformationOverlay(
+                alien = ALIENS[dialIndex],
+                state = transformState,
+                onDone = {
+                    activeIndex = dialIndex
+                    transformState = TransformState.DONE
+                    // Small delay before clearing so the fade-out looks clean
+                    scope.launch {
+                        delay(100)
+                        transformState = TransformState.IDLE
+                    }
+                }
+            )
         }
     }
 }

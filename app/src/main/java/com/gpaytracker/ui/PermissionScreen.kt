@@ -143,7 +143,7 @@ fun openNotificationSettings(context: Context) {
             )
         },
         Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS),
-        Intent(Settings.ACTION_SPECIAL_APP_ACCESS_SETTINGS),
+        Intent("android.settings.ACTION_SPECIAL_APP_ACCESS_SETTINGS"), // API 31+, caught safely
         Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
             data = android.net.Uri.fromParts("package", context.packageName, null)
         }
