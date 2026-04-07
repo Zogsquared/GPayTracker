@@ -3,20 +3,21 @@ package com.gpaytracker.theme
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -24,210 +25,253 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.abs
-import kotlin.math.roundToInt
+
+// ── Small persistent watch button shown in the bottom-right corner ────────────
 
 @Composable
-fun OmnitrixNavigator(
-    selectedIndex: Int,
-    onIndexChange: (Int) -> Unit,
-    onActivate: () -> Unit
+fun OmnitrixButton(
+    activeAlien: Alien,
+    onClick: () -> Unit
 ) {
-    var dragAccumulator by remember { mutableStateOf(0f) }
-    val rotationAnim by animateFloatAsState(
-        targetValue = selectedIndex * (360f / ALIENS.size),
-        animationSpec = spring(dampingRatio = 0.6f, stiffness = 200f),
-        label = "rotation"
-    )
-
-    val alien = ALIENS[selectedIndex]
     val glowColor by animateColorAsState(
-        targetValue = alien.primaryColor,
-        animationSpec = tween(400),
-        label = "glow"
+        targetValue = activeAlien.primaryColor,
+        animationSpec = tween(500),
+        label = "btnGlow"
     )
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color(0xFF0A0A0A))
-            .padding(top = 8.dp, bottom = 16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        // Alien name label above the watch
-        Text(
-            text = alien.name.uppercase(),
-            color = glowColor,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = FontFamily.Monospace,
-            letterSpacing = 3.sp,
-            modifier = Modifier.padding(bottom = 6.dp)
-        )
-
-        // The Omnitrix watch face
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(160.dp)
-                // Scroll gesture: drag left/right to rotate dial
-                .pointerInput(Unit) {
-                    detectHorizontalDragGestures(
-                        onDragEnd = { dragAccumulator = 0f }
-                    ) { _, dragAmount ->
-                        dragAccumulator += dragAmount
-                        val threshold = 60f
-                        if (abs(dragAccumulator) > threshold) {
-                            val direction = if (dragAccumulator > 0) -1 else 1
-                            val newIndex = (selectedIndex + direction + ALIENS.size) % ALIENS.size
-                            OmnitrixSoundPlayer.playDialClick()
-                            onIndexChange(newIndex)
-                            dragAccumulator = 0f
-                        }
-                    }
-                }
-        ) {
-            // Outer bezel ring
-            Box(
-                modifier = Modifier
-                    .size(160.dp)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.radialGradient(
-                            listOf(Color(0xFF2A2A2A), Color(0xFF111111))
-                        )
-                    )
-            )
-
-            // Rotating dial with alien slots
-            Box(
-                modifier = Modifier
-                    .size(140.dp)
-                    .rotate(rotationAnim)
-            ) {
-                ALIENS.forEachIndexed { i, a ->
-                    val angle = (i * (360f / ALIENS.size)) - rotationAnim
-                    val isSelected = i == selectedIndex
-                    AlienSlotOnDial(
-                        alien = a,
-                        angle = (i * (360f / ALIENS.size)).toDouble(),
-                        isSelected = isSelected,
-                        dialSize = 140
-                    )
-                }
-            }
-
-            // Green hourglass symbol in center (Omnitrix logo)
-            Box(
-                modifier = Modifier
-                    .size(52.dp)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.radialGradient(
-                            listOf(
-                                glowColor.copy(alpha = 0.9f),
-                                glowColor.copy(alpha = 0.5f),
-                                Color(0xFF003300)
-                            )
-                        )
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                // Omnitrix hourglass symbol
-                OmnitrixHourglass(color = Color.White)
-            }
-
-            // Tap to activate overlay (invisible, just captures taps on center)
-            Box(
-                modifier = Modifier
-                    .size(52.dp)
-                    .clip(CircleShape)
-                    .pointerInput(Unit) {
-                        awaitPointerEventScope {
-                            while (true) {
-                                val event = awaitPointerEvent()
-                                if (event.changes.any { it.pressed.not() && it.previousPressed }) {
-                                    onActivate()
-                                }
-                            }
-                        }
-                    }
-            )
-        }
-
-        Spacer(Modifier.height(6.dp))
-
-        // Description label
-        Text(
-            text = alien.description,
-            color = Color(0x88FFFFFF),
-            fontSize = 11.sp,
-            fontFamily = FontFamily.Monospace,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(Modifier.height(4.dp))
-
-        // Swipe hint dots
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            ALIENS.forEachIndexed { i, a ->
-                val isActive = i == selectedIndex
-                val dotColor by animateColorAsState(
-                    targetValue = if (isActive) glowColor else Color(0x33FFFFFF),
-                    label = "dot$i"
-                )
-                Box(
-                    modifier = Modifier
-                        .size(if (isActive) 8.dp else 5.dp)
-                        .clip(CircleShape)
-                        .background(dotColor)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun AlienSlotOnDial(alien: Alien, angle: Double, isSelected: Boolean, dialSize: Int) {
-    val radius = dialSize / 2f - 22f
-    val radians = Math.toRadians(angle - 90)
-    val x = (radius * Math.cos(radians)).toFloat()
-    val y = (radius * Math.sin(radians)).toFloat()
-
-    val scale by animateFloatAsState(
-        targetValue = if (isSelected) 1.2f else 0.85f,
-        animationSpec = spring(dampingRatio = 0.5f),
-        label = "scale$angle"
+    val infiniteTransition = rememberInfiniteTransition(label = "btnPulse")
+    val pulse by infiniteTransition.animateFloat(
+        initialValue = 0.85f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            tween(900, easing = FastOutSlowInEasing),
+            RepeatMode.Reverse
+        ),
+        label = "pulse"
     )
 
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
-            .offset(
-                x = (dialSize / 2f + x - 16).dp,
-                y = (dialSize / 2f + y - 16).dp
-            )
-            .size(32.dp)
-            .scale(scale)
-            .clip(RoundedCornerShape(6.dp))
-            .background(
-                if (isSelected) alien.primaryColor.copy(alpha = 0.9f)
-                else Color(0xFF1A1A1A)
-            )
+            .size(64.dp)
+            .scale(pulse)
+            .clip(CircleShape)
+            .background(Color(0xFF111111))
+            .drawBehind {
+                drawCircle(
+                    color = glowColor.copy(alpha = 0.6f),
+                    radius = size.minDimension / 2,
+                    style = Stroke(width = 3.dp.toPx())
+                )
+            }
+            .clickable { onClick() }
     ) {
-        Text(alien.emoji, fontSize = 14.sp)
+        // Inner green core
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(42.dp)
+                .clip(CircleShape)
+                .background(
+                    Brush.radialGradient(
+                        listOf(Color(0xFF00FF44), Color(0xFF007722))
+                    )
+                )
+        ) {
+            Text("⧗", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        }
     }
 }
 
+// ── Full-screen Omnitrix watch face ──────────────────────────────────────────
+
 @Composable
-fun OmnitrixHourglass(color: Color) {
-    // Stylised hourglass using text — in production replace with a vector drawable
-    Text(
-        "⧗",
-        color = color,
-        fontSize = 22.sp,
-        fontWeight = FontWeight.Bold
+fun OmnitrixFullScreen(
+    dialIndex: Int,
+    onScrollLeft: () -> Unit,      // drag right-to-left → next alien
+    onScrollRight: () -> Unit,     // drag left-to-right → previous alien
+    onActivate: () -> Unit,        // press centre button
+    onDismiss: () -> Unit          // back / close
+) {
+    val alien = ALIENS[dialIndex]
+    val glowColor by animateColorAsState(
+        targetValue = alien.primaryColor,
+        animationSpec = tween(350),
+        label = "fullGlow"
     )
+
+    var dragTotal by remember { mutableStateOf(0f) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF050505))
+            // Swipe gesture on the whole screen
+            .pointerInput(dialIndex) {
+                detectHorizontalDragGestures(
+                    onDragEnd = { dragTotal = 0f },
+                    onDragCancel = { dragTotal = 0f }
+                ) { _, amount ->
+                    dragTotal += amount
+                    val threshold = 80f
+                    if (dragTotal > threshold) {          // swiped RIGHT → previous
+                        OmnitrixSoundPlayer.playDialClick()
+                        onScrollRight()
+                        dragTotal = 0f
+                    } else if (dragTotal < -threshold) {  // swiped LEFT → next
+                        OmnitrixSoundPlayer.playDialClick()
+                        onScrollLeft()
+                        dragTotal = 0f
+                    }
+                }
+            }
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            // ── Top bar ───────────────────────────────────────────────────
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "← BACK",
+                    color = Color(0x88FFFFFF),
+                    fontSize = 12.sp,
+                    fontFamily = FontFamily.Monospace,
+                    modifier = Modifier.clickable { onDismiss() }
+                )
+                Text(
+                    "OMNITRIX",
+                    color = Color(0xFF00FF44),
+                    fontSize = 13.sp,
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 4.sp
+                )
+                Text(
+                    "${dialIndex + 1}/${ALIENS.size}",
+                    color = Color(0x88FFFFFF),
+                    fontSize = 12.sp,
+                    fontFamily = FontFamily.Monospace
+                )
+            }
+
+            // ── Alien preview card ────────────────────────────────────────
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    alien.emoji,
+                    fontSize = 100.sp,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                Text(
+                    alien.name.uppercase(),
+                    color = glowColor,
+                    fontSize = 26.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontFamily = FontFamily.Monospace,
+                    letterSpacing = 5.sp
+                )
+                Text(
+                    alien.description,
+                    color = Color(0x88FFFFFF),
+                    fontSize = 13.sp,
+                    fontFamily = FontFamily.Monospace,
+                    letterSpacing = 2.sp
+                )
+            }
+
+            // ── Swipe indicator dots ──────────────────────────────────────
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                ALIENS.forEachIndexed { i, _ ->
+                    val active = i == dialIndex
+                    val dotColor by animateColorAsState(
+                        targetValue = if (active) glowColor else Color(0x33FFFFFF),
+                        label = "dot$i"
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(if (active) 10.dp else 6.dp)
+                            .clip(CircleShape)
+                            .background(dotColor)
+                    )
+                }
+            }
+
+            // ── Swipe hint text ───────────────────────────────────────────
+            Text(
+                "← swipe to browse →",
+                color = Color(0x44FFFFFF),
+                fontSize = 11.sp,
+                fontFamily = FontFamily.Monospace
+            )
+
+            // ── Big centre Omnitrix press button ──────────────────────────
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(bottom = 48.dp)
+            ) {
+                // Outer ring
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(140.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF1A1A1A))
+                        .drawBehind {
+                            drawCircle(
+                                color = glowColor.copy(alpha = 0.5f),
+                                radius = size.minDimension / 2,
+                                style = Stroke(width = 4.dp.toPx())
+                            )
+                        }
+                ) {
+                    // Inner core button
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(110.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.radialGradient(
+                                    listOf(Color(0xFF00FF44), Color(0xFF005522))
+                                )
+                            )
+                            .clickable { onActivate() }
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                "⧗",
+                                color = Color.White,
+                                fontSize = 36.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                "PRESS",
+                                color = Color.White.copy(alpha = 0.7f),
+                                fontSize = 10.sp,
+                                fontFamily = FontFamily.Monospace,
+                                letterSpacing = 2.sp
+                            )
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    "Press to transform",
+                    color = Color(0x66FFFFFF),
+                    fontSize = 11.sp,
+                    fontFamily = FontFamily.Monospace
+                )
+            }
+        }
+    }
 }
