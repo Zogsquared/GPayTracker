@@ -8,10 +8,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RadialGradientShader
-import androidx.compose.ui.graphics.Shader
-import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.unit.sp
 import androidx.compose.material3.Text
 import androidx.compose.ui.text.font.FontFamily
@@ -72,19 +70,13 @@ fun TransformationOverlay(
             .fillMaxSize()
             .alpha(flashAlpha)
             .background(
-                object : ShaderBrush() {
-                    override fun createShader(size: androidx.compose.ui.geometry.Size): Shader {
-                        return RadialGradientShader(
-                            colors = listOf(
-                                alienColor.copy(alpha = 0.95f),
-                                omnitrixGreen.copy(alpha = 0.9f),
-                                Color(0xFF003300)
-                            ),
-                            center = size.center,
-                            radius = size.maxDimension * 0.7f
-                        )
-                    }
-                }
+                Brush.radialGradient(
+                    colors = listOf(
+                        alienColor.copy(alpha = 0.95f),
+                        omnitrixGreen.copy(alpha = 0.9f),
+                        Color(0xFF003300)
+                    )
+                )
             ),
         contentAlignment = Alignment.Center
     ) {
